@@ -1,0 +1,9 @@
+.venv
+.env
+__psycache__
+index
+4 Ways to Quantify Fat Tails with Python _ by Shaw Talebi _ Towards Data Science.pdf
+langchain_RAG.py
+rag.ipynb
+rag.py
+__pycache__
