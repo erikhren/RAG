@@ -7,3 +7,4 @@ langchain_RAG.py
 rag.ipynb
 rag.py
 __pycache__
+extra.py
