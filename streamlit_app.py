@@ -1,6 +1,6 @@
 import streamlit as st
 from dotenv import load_dotenv
-import os, json
+import os
 from llama_index.core import Settings, SimpleDirectoryReader, VectorStoreIndex, StorageContext, load_index_from_storage, get_response_synthesizer, ServiceContext, Document
 from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.query_engine import RetrieverQueryEngine
@@ -20,13 +20,13 @@ import pandas as pd
 
 load_dotenv('.env')
 os.environ["OPENAI_API_KEY"] = os.getenv('OPENAI_API_KEY')
-dir_path = './index'
+dir_path = os.getenv('DIR_PATH', './index')
 
-# openAI
-def set_llms(embeddings_llm: str, llm: str):
+def set_llms(embeddings_llm: str, llm: str, temperature: float = 0.7, max_tokens: int = 500):
     embed_model = OpenAIEmbedding(model=embeddings_llm) #??
     llm = OpenAI(model=llm_model,
-        temperature=0.5,
+        temperature=temperature,
+        max_tokens=max_tokens,
         system_prompt="You are an expert on the answering questions about the documents/context provided to you. Assume that all questions are related to the documents/context provided to you. Keep your answers technical and based on facts – do not hallucinate features."
         )
     Settings.llm = llm
@@ -70,11 +70,9 @@ def retriever(input_text: str, index, top_k: int):
     return response
 
 def process_pdf(file_buffer):
-    print(f'file type: {type(file_buffer)}')
     pdf_reader = PyPDF2.PdfReader(file_buffer)
     document_texts = [page.extract_text() for page in pdf_reader.pages if page.extract_text()]
     documents = [Document(text=text) for text in document_texts if text]
-    print(f'Documents type: {type(documents)}')
     return documents
 
 def process_csv(file):
@@ -104,8 +102,8 @@ def load_documents(uploaded_file):
     return documents
 
 #@st.cache_resource(show_spinner=False) # what does this actually do?
-def load_data(documents, chunk_size: int = 516, chunk_overlap: int = 128, seperator: str = " "):
-    llm = set_llms(embeddings_model, llm_model)
+def load_data(documents, chunk_size: int = 516, chunk_overlap: int = 128, seperator: str = " ", temperature: float = 0.7, max_tokens: int = 500):
+    llm = set_llms(embeddings_model, llm_model, temperature, max_tokens)
     service_context = ServiceContext.from_defaults(llm=llm)
     nodes = transform_data(documents, chunk_size, chunk_overlap, separator)
     index = create_vector_store(nodes, service_context)
@@ -125,15 +123,18 @@ with st.sidebar:
         "Select embedding model",
         ("text-embedding-3-small", "text-embedding-3-large"),
         key='embeddings_model')
-    llm_model = st.selectbox(
-        "Select LLM model",
-        ("gpt-3.5-turbo", "gpt-3.5-turbo-16k"),
-        key='llm_model')
 
     chunk_size = st.number_input('Chunk size', 512)
     chunk_overlap = st.number_input('Chunk overlap', 128)
     separator = st.text_input('Separator', ' ')
     top_k = st.slider('top-k', 0, 15, 1)
+
+    llm_model = st.selectbox(
+        "Select LLM model",
+        ("gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4"),
+        key='llm_model')
+    temperature = st.number_input('Temperature', 0.7)
+    max_tokens = st.number_input('Max tokens', 500)
 
     uploaded_file = st.file_uploader("Choose a file", type=['pdf', 'csv', 'xlsx', 'txt'])
     if uploaded_file:
@@ -144,35 +145,33 @@ with st.sidebar:
             documents = load_documents(st.session_state['uploaded_file'])
             st.write("filename:", uploaded_file.name)
             with st.spinner('Wait for it...'):
-                index = load_data(documents, chunk_size, chunk_overlap, separator) # LOADING widget
+                index = load_data(documents, chunk_size, chunk_overlap, separator, temperature, max_tokens)
                 st.session_state['index'] = index
             st.success('Done!')
         else:
             st.error('Please upload at least one PDF file before clicking this button.')
 
 
-if "messages" not in st.session_state.keys(): # Initialize the chat message history
+if "messages" not in st.session_state.keys():
     st.session_state.messages = [
-        {"role": "assistant", "content": "Ask me a question about the article"} ## ??
+        {"role": "assistant", "content": "Ask me a question about the article"} # better system prompt
     ]
 
 st.button('Reset Chat', on_click=reset_conversation)
 
 if 'index' in st.session_state and st.session_state['index'] is not None:
-    if prompt := st.chat_input("Your question"): # Prompt for user input and save to chat history
+    if prompt := st.chat_input("Your question"):
         st.session_state.messages.append({"role": "user", "content": prompt})
 
-    for message in st.session_state.messages: # Display the prior chat messages
+    for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.write(message["content"])
 
-    # If last message is not from assistant, generate a new response
     if st.session_state.messages[-1]["role"] != "assistant":
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                #response = chat_engine.chat(prompt)
-                #response = st.session_state.chat_engine.chat(prompt)
-                #index = load_vector_store()
+                # add loading already created embeddings logic
+                # index = load_vector_store()
                 response = retriever(prompt, st.session_state.index, top_k)
                 st.write(response.response)
                 message = {"role": "assistant", "content": response.response}
@@ -180,7 +179,7 @@ if 'index' in st.session_state and st.session_state['index'] is not None:
 else:
     st.error('Index is not available. Please create embeddings first.')
 
-# TO DO: Handle different file formats, better code structure, dockerfile, requirements, readme, add front-end spice
+# TO DO: better code structure, dockerfile, requirements, readme, add front-end spice
 # Improvements: from vector store selection, improve whole RAG process, add usage of local models, evaluation
 # Git help: https://github.com/Kunena/Kunena-Forum/wiki/Create-a-new-branch-with-git-and-manage-branches
 
