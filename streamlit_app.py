@@ -103,15 +103,17 @@ def load_documents(uploaded_file):
         st.error("Unsupported file type!")
     return documents
 
-@st.cache_resource(show_spinner=False) # what does this actually do?
+#@st.cache_resource(show_spinner=False) # what does this actually do?
 def load_data(documents, chunk_size: int = 516, chunk_overlap: int = 128, seperator: str = " "):
     llm = set_llms(embeddings_model, llm_model)
     service_context = ServiceContext.from_defaults(llm=llm)
     nodes = transform_data(documents, chunk_size, chunk_overlap, separator)
     index = create_vector_store(nodes, service_context)
-    # add retrieve
-    chat_engine = index.as_chat_engine(chat_mode="condense_question", verbose=True) # what is this? it shouldn't be here
-    st.session_state.chat_engine = chat_engine
+    return index
+
+def reset_conversation():
+    st.session_state.conversation = None
+    st.session_state.chat_history = None
 
 
 #''' FRONT-END '''
@@ -138,12 +140,13 @@ with st.sidebar:
         st.session_state['uploaded_file'] = uploaded_file
 
     if st.button('Create embeddings'):
-        if 'uploaded_files' in st.session_state:
+        if 'uploaded_file' in st.session_state:
             documents = load_documents(st.session_state['uploaded_file'])
             st.write("filename:", uploaded_file.name)
-            st.success("Done!")
-            load_data(documents, chunk_size, chunk_overlap, separator)
-            st.write('Indexing completed for:', uploaded_file.name)
+            with st.spinner('Wait for it...'):
+                index = load_data(documents, chunk_size, chunk_overlap, separator) # LOADING widget
+                st.session_state['index'] = index
+            st.success('Done!')
         else:
             st.error('Please upload at least one PDF file before clicking this button.')
 
@@ -153,22 +156,29 @@ if "messages" not in st.session_state.keys(): # Initialize the chat message hist
         {"role": "assistant", "content": "Ask me a question about the article"} ## ??
     ]
 
-if prompt := st.chat_input("Your question"): # Prompt for user input and save to chat history
-    st.session_state.messages.append({"role": "user", "content": prompt})
+st.button('Reset Chat', on_click=reset_conversation)
 
-for message in st.session_state.messages: # Display the prior chat messages
-    with st.chat_message(message["role"]):
-        st.write(message["content"])
+if 'index' in st.session_state and st.session_state['index'] is not None:
+    if prompt := st.chat_input("Your question"): # Prompt for user input and save to chat history
+        st.session_state.messages.append({"role": "user", "content": prompt})
 
-# If last message is not from assistant, generate a new response
-if st.session_state.messages[-1]["role"] != "assistant":
-    with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            #response = chat_engine.chat(prompt)
-            response = st.session_state.chat_engine.chat(prompt)
-            st.write(response.response)
-            message = {"role": "assistant", "content": response.response}
-            st.session_state.messages.append(message) # Add response to message history
+    for message in st.session_state.messages: # Display the prior chat messages
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+
+    # If last message is not from assistant, generate a new response
+    if st.session_state.messages[-1]["role"] != "assistant":
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                #response = chat_engine.chat(prompt)
+                #response = st.session_state.chat_engine.chat(prompt)
+                #index = load_vector_store()
+                response = retriever(prompt, st.session_state.index, top_k)
+                st.write(response.response)
+                message = {"role": "assistant", "content": response.response}
+                st.session_state.messages.append(message)
+else:
+    st.error('Index is not available. Please create embeddings first.')
 
 # TO DO: Handle different file formats, better code structure, dockerfile, requirements, readme, add front-end spice
 # Improvements: from vector store selection, improve whole RAG process, add usage of local models, evaluation
