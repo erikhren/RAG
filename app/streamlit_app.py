@@ -19,11 +19,11 @@ from io import BytesIO
 import pandas as pd
 
 load_dotenv('.env')
-os.environ["OPENAI_API_KEY"] = os.getenv('OPENAI_API_KEY')
+os.environ["OPENAI_API_KEY"] = os.getenv('OPENAI_API_KEY', 'No api-key specified')
 dir_path = os.getenv('DIR_PATH', './index')
 
 def set_llms(embeddings_llm: str, llm: str, temperature: float = 0.7, max_tokens: int = 500):
-    embed_model = OpenAIEmbedding(model=embeddings_llm) #??
+    embed_model = OpenAIEmbedding(model=embeddings_llm)
     llm = OpenAI(model=llm_model,
         temperature=temperature,
         max_tokens=max_tokens,

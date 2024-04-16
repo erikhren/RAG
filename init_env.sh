@@ -1,4 +1,4 @@
 rm -rf .venv
-python -m venv .venv
+python3 -m venv .venv
 . .venv/bin/activate
-pip install -r requirements.txt
+pip3 install -r requirements.txt
