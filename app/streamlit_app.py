@@ -75,16 +75,16 @@ def process_pdf(file_buffer):
     documents = [Document(text=text) for text in document_texts if text]
     return documents
 
-def process_csv(file):
-    df = pd.read_csv(file)
+def process_csv(file_buffer):
+    df = pd.read_csv(file_buffer)
     return [Document(text=str(row)) for index, row in df.iterrows()]
 
-def process_xlsx(file):
-    df = pd.read_excel(file, engine='openpyxl')
+def process_xlsx(file_buffer):
+    df = pd.read_excel(file_buffer, engine='openpyxl')
     return [Document(text=str(row)) for index, row in df.iterrows()]
 
-def process_txt(file):
-    content = file.read().decode('utf-8')
+def process_txt(file_buffer):
+    content = file_buffer.read().decode('utf-8')
     return [Document(text=content)]
 
 def load_documents(uploaded_file):
@@ -101,7 +101,6 @@ def load_documents(uploaded_file):
         st.error("Unsupported file type!")
     return documents
 
-#@st.cache_resource(show_spinner=False) # what does this actually do?
 def load_data(documents, chunk_size: int = 516, chunk_overlap: int = 128, seperator: str = " ", temperature: float = 0.7, max_tokens: int = 500):
     llm = set_llms(embeddings_model, llm_model, temperature, max_tokens)
     service_context = ServiceContext.from_defaults(llm=llm)
@@ -114,9 +113,7 @@ def reset_conversation():
     st.session_state.chat_history = None
 
 
-#''' FRONT-END '''
-
-st.title('🦜🔗 Quickstart App')
+st.title('🦜🔗 RAG')
 with st.sidebar:
 
     embeddings_model = st.selectbox(
@@ -154,7 +151,7 @@ with st.sidebar:
 
 if "messages" not in st.session_state.keys():
     st.session_state.messages = [
-        {"role": "assistant", "content": "Ask me a question about the article"} # better system prompt
+        {"role": "assistant", "content": "Ask me a question about the uploaded file"}
     ]
 
 st.button('Reset Chat', on_click=reset_conversation)
@@ -170,26 +167,9 @@ if 'index' in st.session_state and st.session_state['index'] is not None:
     if st.session_state.messages[-1]["role"] != "assistant":
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                # add loading already created embeddings logic
-                # index = load_vector_store()
                 response = retriever(prompt, st.session_state.index, top_k)
                 st.write(response.response)
                 message = {"role": "assistant", "content": response.response}
                 st.session_state.messages.append(message)
 else:
     st.error('Index is not available. Please create embeddings first.')
-
-# TO DO: better code structure, dockerfile, requirements, readme, add front-end spice
-# Improvements: from vector store selection, improve whole RAG process, add usage of local models, evaluation
-# Git help: https://github.com/Kunena/Kunena-Forum/wiki/Create-a-new-branch-with-git-and-manage-branches
-
-
-# Deliverable:
-    # upload to sidebar --> load file / use old ones or just chat normally
-    # Upload file button: https://github.com/gabrielchua/RAGxplorer
-    # Option to save vector store and load previously saved
-    # Add evaluation
-    # Add embedding and llm parameters
-    # Improve front-end
-    # Model selection (local embeddings & llm with openAI)
-    # Upload to github
