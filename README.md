@@ -1,3 +1,10 @@
+<!-- Social Badges -->
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/erik-h-a3097413a/)
+[![GitHub Repo stars](https://img.shields.io/github/stars/erikhren/RAG?style=social)](https://github.com/erikhren/RAG)
+
+<!-- MARKDOWN LINKS & IMAGES -->
+<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
+[contributors-shield]: https://img.shields.io/github/contributors/erikhren/RAG?style=for-the-badge&color=orange
 # 🔎 Retrieval Augmented Generation (RAG)
 
 This application is designed to enhance data interaction through natural language processing. By uploading documents in various formats (PDF, CSV, XLSX, TXT), users can leverage the power of OpenAI's language models to query and interact with their data directly. This application is particularly useful for data analysts, researchers, and business professionals who need to extract insights from their documents swiftly and conversationally.
