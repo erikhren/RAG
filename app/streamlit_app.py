@@ -11,7 +11,7 @@ from llama_index.core.extractors import (
     TitleExtractor,
     QuestionsAnsweredExtractor,
 )
-from typing import List
+from typing import List, Literal
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAI
 import PyPDF2
@@ -22,7 +22,7 @@ load_dotenv('.env')
 os.environ["OPENAI_API_KEY"] = os.getenv('OPENAI_API_KEY', 'No api-key specified')
 dir_path = os.getenv('DIR_PATH', './index')
 
-def set_llms(embeddings_llm: str, llm: str, temperature: float = 0.7, max_tokens: int = 500):
+def set_llms(embeddings_llm: str, llm_model: str, temperature: float = 0.7, max_tokens: int = 500):
     embed_model = OpenAIEmbedding(model=embeddings_llm)
     llm = OpenAI(model=llm_model,
         temperature=temperature,
@@ -35,7 +35,7 @@ def set_llms(embeddings_llm: str, llm: str, temperature: float = 0.7, max_tokens
 def load_file(file_path: str) -> List:
     return SimpleDirectoryReader(input_files=[file_path]).load_data()
 
-def transform_data(documents: List, chunk_size: int, chunk_overlap: int, seperator: str = " ") -> List:
+def transform_data(documents: List[Document], chunk_size: int, chunk_overlap: int, seperator: str = " ") -> List:
     pipeline = IngestionPipeline(
     transformations=[
         TokenTextSplitter(separator=seperator, chunk_size=chunk_size, chunk_overlap=chunk_overlap),
@@ -101,7 +101,7 @@ def load_documents(uploaded_file):
         st.error("Unsupported file type!")
     return documents
 
-def load_data(documents, chunk_size: int = 516, chunk_overlap: int = 128, seperator: str = " ", temperature: float = 0.7, max_tokens: int = 500):
+def load_data(documents, embeddings_model: Literal, llm_model: Literal, chunk_size: int = 516, chunk_overlap: int = 128, separator: str = " ", temperature: float = 0.7, max_tokens: int = 500):
     llm = set_llms(embeddings_model, llm_model, temperature, max_tokens)
     service_context = ServiceContext.from_defaults(llm=llm)
     nodes = transform_data(documents, chunk_size, chunk_overlap, separator)
@@ -115,7 +115,7 @@ def reset_conversation():
 
 st.title('🦜🔗 RAG')
 with st.sidebar:
-
+    # select options in sidebar
     embeddings_model = st.selectbox(
         "Select embedding model",
         ("text-embedding-3-small", "text-embedding-3-large"),
@@ -137,18 +137,19 @@ with st.sidebar:
     if uploaded_file:
         st.session_state['uploaded_file'] = uploaded_file
 
+    # when button is clicked create embeddings
     if st.button('Create embeddings'):
         if 'uploaded_file' in st.session_state:
             documents = load_documents(st.session_state['uploaded_file'])
             st.write("filename:", uploaded_file.name)
             with st.spinner('Wait for it...'):
-                index = load_data(documents, chunk_size, chunk_overlap, separator, temperature, max_tokens)
+                index = load_data(documents, embeddings_model, llm_model, chunk_size, chunk_overlap, separator, temperature, max_tokens)
                 st.session_state['index'] = index
             st.success('Done!')
         else:
             st.error('Please upload at least one PDF file before clicking this button.')
 
-
+# set up chat
 if "messages" not in st.session_state.keys():
     st.session_state.messages = [
         {"role": "assistant", "content": "Ask me a question about the uploaded file"}
@@ -167,6 +168,7 @@ if 'index' in st.session_state and st.session_state['index'] is not None:
     if st.session_state.messages[-1]["role"] != "assistant":
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
+                # query the created embeddings
                 response = retriever(prompt, st.session_state.index, top_k)
                 st.write(response.response)
                 message = {"role": "assistant", "content": response.response}
