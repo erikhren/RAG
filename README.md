@@ -16,16 +16,6 @@ This application is designed to enhance data interaction through natural languag
 - Interactive Chat: Allows users to ask questions and receive answers directly related to the uploaded content.
 - Flexible Configuration: Provides options to select different models and parameters to customize the processing according to the user's needs.
 
-## Future Improvements
-- Refactor and improve code quality.
-- Use already created vector store(s) to decrease cost.
-- Improvement of the whole process for better results: loading, indexing, storing, & querying.
-- Enable the use of local models (Hugging Face).
-- Add & display evaluation to measure the quality.
-- Improve front-end.
-
-**Suggestions??**
-
 ## What is RAG?
 Large Language Models (LLMs) are developed using vast datasets, but they don't initially include specific user data. Retrieval-Augmented Generation (RAG) addresses this by integrating user-specific data with the existing datasets accessible to LLMs.
 
