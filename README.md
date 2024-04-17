@@ -24,13 +24,14 @@ In the RAG framework, user data is first indexed, making it searchable. When a u
 Whether you are developing a chatbot or another type of interactive agent, understanding how to incorporate RAG techniques to incorporate relevant data into your application is crucial.
 
 # Getting started
-## Prerequisites installation
 
 Create a .env file, add your OpenAI API key & desired directory where index will be stored (default is ./index):
 ```
 OPENAI_API_KEY='your_api_key'
 DIR_PATH='your_directory'
 ```
+
+## Prerequisites installation
 
 #### Windows
 * [Windows Subsystem for Linux 2](https://docs.microsoft.com/en-us/windows/wsl/install)
